@@ -1,0 +1,137 @@
+version: 2
+
+models:
+  - name: int_fhir_patient
+    description: Patient records prepared for dimensional modeling.
+    columns:
+      - name: patient_id
+        description: Joinable patient id derived from the FHIR Patient resource id.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: int_fhir_encounter
+    description: Encounter records with patient references normalized into joinable ids.
+    columns:
+      - name: encounter_id
+        description: Joinable encounter id.
+        data_tests:
+          - not_null
+          - unique
+      - name: patient_id
+        description: Patient id parsed from the FHIR subject reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_patient')
+                field: patient_id
+
+  - name: int_fhir_observation
+    description: Observation records with patient and encounter references normalized into joinable ids.
+    columns:
+      - name: observation_id
+        description: Joinable observation id.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Patient id parsed from the FHIR subject reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Encounter id parsed from the FHIR encounter reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_encounter')
+                field: encounter_id
+
+  - name: int_fhir_condition
+    description: Condition records with patient and encounter references normalized into joinable ids.
+    columns:
+      - name: condition_id
+        description: Joinable condition id.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Patient id parsed from the FHIR subject reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Encounter id parsed from the FHIR encounter reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_encounter')
+                field: encounter_id
+
+  - name: int_fhir_procedure
+    description: Procedure records with patient and encounter references normalized into joinable ids.
+    columns:
+      - name: procedure_id
+        description: Joinable procedure id.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Patient id parsed from the FHIR subject reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Encounter id parsed from the FHIR encounter reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_encounter')
+                field: encounter_id
+
+  - name: int_fhir_immunization
+    description: Immunization records with patient and encounter references normalized into joinable ids.
+    columns:
+      - name: immunization_id
+        description: Joinable immunization id.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Patient id parsed from the FHIR patient reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Encounter id parsed from the FHIR encounter reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_encounter')
+                field: encounter_id
+
+  - name: int_fhir_medicationrequest
+    description: MedicationRequest records with patient and encounter references normalized into joinable ids.
+    columns:
+      - name: medication_request_id
+        description: Joinable medication request id.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Patient id parsed from the FHIR subject reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Encounter id parsed from the FHIR encounter reference.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('int_fhir_encounter')
+                field: encounter_id

@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: stg_fhir_condition
+    description: Staged FHIR Condition resources with core identifiers, status fields, patient and encounter references, and condition coding flattened from the raw JSON payload.
+    columns:
+      - name: condition_id
+        description: FHIR Condition resource id.
+        data_tests:
+          - not_null
+      - name: patient_reference
+        description: FHIR reference to the patient subject, typically in `urn:uuid:` form in this dataset.
+      - name: encounter_reference
+        description: FHIR reference to the related encounter.
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.
+
+  - name: stg_fhir_encounter
+    description: Staged FHIR Encounter resources with encounter identifiers, patient reference, encounter class, status, and start and end timestamps.
+    columns:
+      - name: encounter_id
+        description: FHIR Encounter resource id.
+        data_tests:
+          - not_null
+      - name: patient_reference
+        description: FHIR reference to the patient subject.
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.
+
+  - name: stg_fhir_immunization
+    description: Staged FHIR Immunization resources with patient and encounter references, vaccine coding, status, and occurrence timestamp.
+    columns:
+      - name: immunization_id
+        description: FHIR Immunization resource id.
+        data_tests:
+          - not_null
+      - name: patient_reference
+        description: FHIR reference to the patient.
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.
+
+  - name: stg_fhir_medicationrequest
+    description: Staged FHIR MedicationRequest resources with patient and encounter references, medication coding, status, intent, and authored timestamp.
+    columns:
+      - name: medication_request_id
+        description: FHIR MedicationRequest resource id.
+        data_tests:
+          - not_null
+      - name: patient_reference
+        description: FHIR reference to the patient subject.
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.
+
+  - name: stg_fhir_observation
+    description: Staged FHIR Observation resources with identifiers, patient and encounter references, observation coding, status, effective timestamp, and simple quantitative result fields.
+    columns:
+      - name: observation_id
+        description: FHIR Observation resource id.
+        data_tests:
+          - not_null
+      - name: patient_reference
+        description: FHIR reference to the patient subject.
+      - name: encounter_reference
+        description: FHIR reference to the related encounter.
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.
+
+  - name: stg_fhir_patient
+    description: Staged FHIR Patient resources with core demographic attributes flattened from the raw payload.
+    columns:
+      - name: patient_id
+        description: FHIR Patient resource id.
+        data_tests:
+          - not_null
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.
+
+  - name: stg_fhir_procedure
+    description: Staged FHIR Procedure resources with identifiers, patient and encounter references, procedure coding, status, and performed timestamps.
+    columns:
+      - name: procedure_id
+        description: FHIR Procedure resource id.
+        data_tests:
+          - not_null
+      - name: patient_reference
+        description: FHIR reference to the patient subject.
+      - name: encounter_reference
+        description: FHIR reference to the related encounter.
+      - name: payload
+        description: Raw FHIR JSON payload for the resource.

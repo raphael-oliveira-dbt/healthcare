@@ -1,0 +1,20 @@
+select
+    encounter_id,
+    regexp_extract(patient_reference, r'([^/:]+)$') as patient_id,
+    regexp_extract(json_value(payload, '$.serviceProvider.reference'), r'([^/:]+)$') as service_provider_id,
+    patient_reference,
+    json_value(payload, '$.serviceProvider.reference') as service_provider_reference,
+    encounter_status,
+    encounter_class_code,
+    json_value(payload, '$.class.display') as encounter_class_display,
+    json_value(payload, '$.type[0].coding[0].code') as encounter_type_code,
+    json_value(payload, '$.type[0].coding[0].display') as encounter_type_display,
+    json_value(payload, '$.serviceType.coding[0].code') as service_type_code,
+    json_value(payload, '$.serviceType.coding[0].display') as service_type_display,
+    encounter_start_at,
+    encounter_end_at,
+    payload,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('stg_fhir_encounter') }}

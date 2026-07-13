@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: raw_fhir_roliveira
+    description: Raw HL7 FHIR resources ingested into BigQuery. Each table represents a FHIR resource type in source-native form, with the resource body stored under `payload` and ingestion metadata captured in `_source_file`, `_batch_id`, and `_loaded_at`. Treat this as the landing layer before staging, flattening, and analytics-friendly modeling.
+
+    database: sales-demo-project-314714
+    schema: raw_fhir_roliveira
+    tables:
+      - name: raw_condition
+        description: FHIR Condition resources. Captures problems, diagnoses, or other clinical conditions asserted for a patient, including codes, clinical status, verification status, onset timing, and links to encounter or recorder context when present.
+      - name: raw_encounter
+        description: FHIR Encounter resources. Represents interactions between a patient and the healthcare system such as visits, admissions, appointments fulfilled, or care episodes, typically including class, status, participants, service provider, and period details.
+      - name: raw_immunization
+        description: FHIR Immunization resources. Records vaccine administrations to a patient, including vaccine code, occurrence date or time, status, dose details, performer information, lot metadata, and protocol context where available.
+      - name: raw_medicationrequest
+        description: FHIR MedicationRequest resources. Represents medication orders or prescriptions authored for a patient, including intent, status, medication, dosage instructions, requester, encounter context, and authored date when supplied by the source system.
+      - name: raw_observation
+        description: FHIR Observation resources. Stores measurements, lab results, vital signs, and other asserted clinical observations, usually including observation code, value, units, interpretation, effective timing, specimen context, and subject references.
+      - name: raw_patient
+        description: FHIR Patient resources. Contains patient demographic and identity information such as identifiers, name, gender, birth date, telecom, address, and other administrative attributes used to anchor many downstream clinical relationships.
+      - name: raw_procedure
+        description: FHIR Procedure resources. Represents clinical procedures or interventions performed on or for a patient, including procedure code, status, performed timing, body site, outcome, reason context, and encounter linkage where available.

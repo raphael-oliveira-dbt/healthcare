@@ -1,0 +1,21 @@
+select
+    condition_id,
+    regexp_extract(patient_reference, r'([^/:]+)$') as patient_id,
+    regexp_extract(encounter_reference, r'([^/:]+)$') as encounter_id,
+    patient_reference,
+    encounter_reference,
+    clinical_status,
+    json_value(payload, '$.clinicalStatus.coding[0].display') as clinical_status_display,
+    verification_status,
+    json_value(payload, '$.verificationStatus.coding[0].display') as verification_status_display,
+    condition_code,
+    json_value(payload, '$.code.coding[0].system') as condition_code_system,
+    json_value(payload, '$.code.coding[0].display') as condition_code_display,
+    condition_text,
+    onset_at,
+    safe_cast(json_value(payload, '$.recordedDate') as timestamp) as recorded_at,
+    payload,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('stg_fhir_condition') }}

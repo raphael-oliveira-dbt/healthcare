@@ -1,0 +1,20 @@
+select
+    immunization_id,
+    regexp_extract(patient_reference, r'([^/:]+)$') as patient_id,
+    regexp_extract(encounter_reference, r'([^/:]+)$') as encounter_id,
+    patient_reference,
+    encounter_reference,
+    immunization_status,
+    vaccine_code,
+    json_value(payload, '$.vaccineCode.coding[0].system') as vaccine_code_system,
+    json_value(payload, '$.vaccineCode.coding[0].display') as vaccine_code_display,
+    vaccine_text,
+    safe_cast(json_value(payload, '$.primarySource') as bool) as primary_source,
+    json_value(payload, '$.statusReason.coding[0].code') as status_reason_code,
+    json_value(payload, '$.statusReason.coding[0].display') as status_reason_display,
+    occurrence_at,
+    payload,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('stg_fhir_immunization') }}

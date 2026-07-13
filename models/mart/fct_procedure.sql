@@ -1,0 +1,22 @@
+select
+    procedure_id,
+    patient_id,
+    encounter_id,
+    procedure_status,
+    procedure_category_code,
+    procedure_category_display,
+    procedure_code,
+    procedure_code_system,
+    procedure_code_display,
+    coalesce(procedure_code_display, procedure_text, procedure_code) as procedure_name,
+    procedure_text,
+    performed_at,
+    date(performed_at) as performed_date,
+    date_trunc(date(performed_at), month) as performed_month,
+    performed_period_start_at,
+    performed_period_end_at,
+    procedure_status = 'completed' as is_completed_procedure,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('int_fhir_procedure') }}

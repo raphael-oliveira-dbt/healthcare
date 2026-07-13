@@ -1,0 +1,22 @@
+select
+    encounter_id,
+    patient_id,
+    service_provider_id,
+    encounter_status,
+    encounter_class_code,
+    encounter_class_display,
+    encounter_type_code,
+    encounter_type_display,
+    service_type_code,
+    service_type_display,
+    encounter_start_at,
+    date(encounter_start_at) as encounter_date,
+    date_trunc(date(encounter_start_at), month) as encounter_month,
+    encounter_end_at,
+    timestamp_diff(encounter_end_at, encounter_start_at, minute) as encounter_duration_minutes,
+    encounter_end_at is not null as has_encounter_end,
+    encounter_status = 'finished' as is_finished_encounter,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('int_fhir_encounter') }}

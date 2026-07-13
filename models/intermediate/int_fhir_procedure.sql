@@ -1,0 +1,21 @@
+select
+    procedure_id,
+    regexp_extract(patient_reference, r'([^/:]+)$') as patient_id,
+    regexp_extract(encounter_reference, r'([^/:]+)$') as encounter_id,
+    patient_reference,
+    encounter_reference,
+    procedure_status,
+    json_value(payload, '$.category[0].coding[0].code') as procedure_category_code,
+    json_value(payload, '$.category[0].coding[0].display') as procedure_category_display,
+    procedure_code,
+    json_value(payload, '$.code.coding[0].system') as procedure_code_system,
+    json_value(payload, '$.code.coding[0].display') as procedure_code_display,
+    procedure_text,
+    coalesce(performed_at, performed_period_start_at) as performed_at,
+    performed_period_start_at,
+    performed_period_end_at,
+    payload,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('stg_fhir_procedure') }}

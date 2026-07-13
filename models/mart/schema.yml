@@ -1,0 +1,137 @@
+version: 2
+
+models:
+  - name: dim_patient
+    description: Patient dimension with one row per patient for demographic and cohort analysis, including age and deceased status helpers.
+    columns:
+      - name: patient_id
+        description: Primary key for the patient dimension.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: fct_encounter
+    description: Encounter event fact with one row per FHIR Encounter resource, including patient linkage, class and type coding, service context, encounter timing, and metric-friendly encounter date fields.
+    columns:
+      - name: encounter_id
+        description: Primary key for the encounter fact.
+        data_tests:
+          - not_null
+          - unique
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+
+  - name: fct_observation
+    description: Observation event fact with one row per FHIR Observation resource, including category and code attributes, clinical timing, result values, interpretation fields, and derived flags for metric development.
+    columns:
+      - name: observation_id
+        description: Primary key for the observation fact.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Foreign key to the encounter fact.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_encounter')
+                field: encounter_id
+
+  - name: fct_condition
+    description: Condition event fact with one row per FHIR Condition resource, including clinical and verification status, coding attributes, onset and recorded timestamps, and derived active and confirmed flags.
+    columns:
+      - name: condition_id
+        description: Primary key for the condition fact.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Foreign key to the encounter fact.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_encounter')
+                field: encounter_id
+
+  - name: fct_procedure
+    description: Procedure event fact with one row per FHIR Procedure resource, including category and procedure coding, performed timestamp context, and derived completion and period fields.
+    columns:
+      - name: procedure_id
+        description: Primary key for the procedure fact.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Foreign key to the encounter fact.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_encounter')
+                field: encounter_id
+
+  - name: fct_immunization
+    description: Immunization event fact with one row per FHIR Immunization resource, including vaccine coding, source flags, status reason fields, administration timing, and derived completion and date fields.
+    columns:
+      - name: immunization_id
+        description: Primary key for the immunization fact.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Foreign key to the encounter fact.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_encounter')
+                field: encounter_id
+
+  - name: fct_medicationrequest
+    description: Medication request event fact with one row per FHIR MedicationRequest resource, including medication coding, requester linkage, authored timing, dosage text, and derived active and order flags.
+    columns:
+      - name: medication_request_id
+        description: Primary key for the medication request fact.
+        data_tests:
+          - not_null
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+      - name: encounter_id
+        description: Foreign key to the encounter fact.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_encounter')
+                field: encounter_id

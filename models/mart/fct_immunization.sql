@@ -1,0 +1,21 @@
+select
+    immunization_id,
+    patient_id,
+    encounter_id,
+    immunization_status,
+    vaccine_code,
+    vaccine_code_system,
+    vaccine_code_display,
+    coalesce(vaccine_code_display, vaccine_text, vaccine_code) as vaccine_name,
+    vaccine_text,
+    primary_source,
+    status_reason_code,
+    status_reason_display,
+    occurrence_at,
+    date(occurrence_at) as occurrence_date,
+    date_trunc(date(occurrence_at), month) as occurrence_month,
+    immunization_status = 'completed' as is_completed_immunization,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('int_fhir_immunization') }}

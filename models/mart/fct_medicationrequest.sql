@@ -1,0 +1,22 @@
+select
+    medication_request_id,
+    patient_id,
+    encounter_id,
+    requester_id,
+    medication_request_status,
+    medication_request_intent,
+    medication_code,
+    medication_code_system,
+    medication_code_display,
+    coalesce(medication_code_display, medication_text, medication_code) as medication_name,
+    medication_text,
+    dosage_text,
+    authored_at,
+    date(authored_at) as authored_date,
+    date_trunc(date(authored_at), month) as authored_month,
+    medication_request_status = 'active' as is_active_medication_request,
+    medication_request_intent = 'order' as is_order,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('int_fhir_medicationrequest') }}

@@ -1,0 +1,23 @@
+select
+    condition_id,
+    patient_id,
+    encounter_id,
+    clinical_status,
+    clinical_status_display,
+    verification_status,
+    verification_status_display,
+    condition_code,
+    condition_code_system,
+    condition_code_display,
+    coalesce(condition_code_display, condition_text, condition_code) as condition_name,
+    condition_text,
+    onset_at,
+    date(onset_at) as onset_date,
+    recorded_at,
+    date(recorded_at) as recorded_date,
+    clinical_status = 'active' as is_active_condition,
+    verification_status = 'confirmed' as is_confirmed_condition,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('int_fhir_condition') }}

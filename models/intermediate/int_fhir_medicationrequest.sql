@@ -1,0 +1,21 @@
+select
+    medication_request_id,
+    regexp_extract(patient_reference, r'([^/:]+)$') as patient_id,
+    regexp_extract(encounter_reference, r'([^/:]+)$') as encounter_id,
+    regexp_extract(json_value(payload, '$.requester.reference'), r'([^/:]+)$') as requester_id,
+    patient_reference,
+    encounter_reference,
+    json_value(payload, '$.requester.reference') as requester_reference,
+    medication_request_status,
+    medication_request_intent,
+    medication_code,
+    json_value(payload, '$.medicationCodeableConcept.coding[0].system') as medication_code_system,
+    json_value(payload, '$.medicationCodeableConcept.coding[0].display') as medication_code_display,
+    medication_text,
+    json_value(payload, '$.dosageInstruction[0].text') as dosage_text,
+    authored_at,
+    payload,
+    _source_file,
+    _batch_id,
+    _loaded_at
+from {{ ref('stg_fhir_medicationrequest') }}
