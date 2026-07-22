@@ -1,0 +1,117 @@
+version: 2
+
+models:
+  - name: rpt_population_overview
+    description: Dashboard-facing population overview by gender, age band, and deceased status.
+    columns:
+      - name: population_overview_report_key
+        description: Primary key for the population segment grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_encounter_utilization
+    description: Dashboard-facing encounter utilization by activity month, gender, and age band.
+    columns:
+      - name: encounter_utilization_report_key
+        description: Primary key for the monthly encounter utilization grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_chronic_conditions
+    description: Dashboard-facing chronic condition prevalence by condition, gender, and age band.
+    columns:
+      - name: chronic_condition_report_key
+        description: Primary key for the condition and demographic segment grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_clinical_quality
+    description: Dashboard-facing clinical quality measure summary by measure, gender, and age band.
+    columns:
+      - name: clinical_quality_report_key
+        description: Primary key for the quality measure segment grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_preventive_care_gaps
+    description: Dashboard-facing preventive care gap summary by gap, gender, and age band.
+    columns:
+      - name: preventive_care_gaps_report_key
+        description: Primary key for the care gap segment grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_immunization_coverage
+    description: Dashboard-facing immunization coverage by month, vaccine, gender, and age band.
+    columns:
+      - name: immunization_coverage_report_key
+        description: Primary key for the immunization coverage grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_medication_orders
+    description: Dashboard-facing medication order volume by month, medication, status, gender, and age band.
+    columns:
+      - name: medication_orders_report_key
+        description: Primary key for the medication order reporting grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_procedure_volume
+    description: Dashboard-facing procedure volume by month, procedure, gender, and age band.
+    columns:
+      - name: procedure_volume_report_key
+        description: Primary key for the procedure volume grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_observation_trends
+    description: Dashboard-facing numeric observation trends by month, observation, unit, gender, and age band.
+    columns:
+      - name: observation_trends_report_key
+        description: Primary key for the observation trend grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_safety_signals
+    description: Dashboard-facing safety signals from abnormal observations, active medication requests, and active conditions.
+    columns:
+      - name: safety_signals_report_key
+        description: Primary key for the safety signal, name, and demographic segment grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: rpt_high_risk_cohorts
+    description: Dashboard-facing patient-level high-risk cohort view using condition, medication, abnormal result, and care-gap signals.
+    columns:
+      - name: high_risk_cohort_report_key
+        description: Primary key for the patient-level high-risk cohort report.
+        data_tests:
+          - not_null
+          - unique
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+
+  - name: rpt_disparities
+    description: Dashboard-facing disparities view showing quality rate differences from the measure average by gender and age band.
+    columns:
+      - name: disparities_report_key
+        description: Primary key for the disparities reporting grain.
+        data_tests:
+          - not_null
+          - unique
