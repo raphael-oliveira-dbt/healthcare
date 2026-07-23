@@ -1,4 +1,11 @@
 select
+    fact_observation.effective_month,
+    observation.observation_key,
+    observation.observation_name,
+    observation.observation_category_display,
+    fact_observation.value_unit,
+    patient.gender,
+    patient.age_band,
     concat(
         coalesce(fact_observation.effective_month, cast('1900-01-01' as date)),
         '|',
@@ -8,13 +15,6 @@ select
         '|',
         coalesce(patient.age_band, 'unknown')
     ) as observation_trends_report_key,
-    fact_observation.effective_month,
-    observation.observation_key,
-    observation.observation_name,
-    observation.observation_category_display,
-    fact_observation.value_unit,
-    patient.gender,
-    patient.age_band,
     count(distinct fact_observation.observation_id) as observation_count,
     count(distinct fact_observation.patient_id) as patient_count,
     avg(fact_observation.value_quantity) as average_value_quantity,
@@ -33,6 +33,10 @@ left join {{ ref('dim_observation') }} as observation
         coalesce(fact_observation.observation_code_system, 'unknown'),
         '|',
         coalesce(fact_observation.observation_code, 'unknown'),
+        '|',
+        coalesce(fact_observation.observation_category_code, 'unknown'),
+        '|',
+        coalesce(fact_observation.observation_category_display, 'unknown'),
         '|',
         coalesce(fact_observation.observation_name, 'unknown')
     ) = observation.observation_key

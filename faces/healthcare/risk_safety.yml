@@ -1,0 +1,132 @@
+title: Risk & Safety Signals
+description: High-risk cohorts and safety signal patterns for follow-up prioritization.
+tags:
+  - healthcare
+  - risk
+  - safety
+source: healthcare
+
+queries:
+  risk_tier_distribution:
+    description: Patient count by high-risk cohort tier.
+    sql: |
+      select
+          risk_tier,
+          count(distinct patient_id) as patient_count,
+          sum(open_care_gap_count) as open_care_gap_count,
+          sum(active_condition_count) as active_condition_count,
+          sum(abnormal_observation_count) as abnormal_observation_count
+      from {{ ref('rpt_high_risk_cohorts') }}
+      group by 1
+      order by patient_count desc
+
+  risk_totals:
+    description: Single-row high and moderate risk patient totals.
+    sql: |
+      select
+          count(distinct patient_id) as patient_count,
+          count(distinct case when risk_tier = 'high' then patient_id end) as high_risk_patient_count,
+          count(distinct case when risk_tier in ('high', 'moderate') then patient_id end) as elevated_risk_patient_count,
+          sum(open_care_gap_count) as open_care_gap_count
+      from {{ ref('rpt_high_risk_cohorts') }}
+
+  high_risk_patients:
+    description: Highest-risk patients ranked by risk tier, care gaps, and active conditions.
+    sql: |
+      select
+          patient_id,
+          patient_name,
+          gender,
+          age_years,
+          age_band,
+          risk_tier,
+          encounter_count,
+          active_condition_count,
+          abnormal_observation_count,
+          active_medication_request_count,
+          open_care_gap_count
+      from {{ ref('rpt_high_risk_cohorts') }}
+      order by
+          case risk_tier when 'high' then 1 when 'moderate' then 2 else 3 end,
+          open_care_gap_count desc,
+          active_condition_count desc
+      limit 25
+
+  safety_signal_type:
+    description: Safety signal event and patient counts by signal type.
+    sql: |
+      select
+          safety_signal_type,
+          sum(signal_event_count) as signal_event_count,
+          sum(patient_count) as patient_count
+      from {{ ref('rpt_safety_signals') }}
+      group by 1
+      order by signal_event_count desc
+
+  safety_signal_name:
+    description: Top safety signal names by event count.
+    sql: |
+      select
+          safety_signal_name,
+          safety_signal_type,
+          sum(signal_event_count) as signal_event_count,
+          sum(patient_count) as patient_count,
+          max(latest_signal_date) as latest_signal_date
+      from {{ ref('rpt_safety_signals') }}
+      group by 1, 2
+      order by signal_event_count desc
+      limit 15
+
+charts:
+  patient_count:
+    description: Total patients in the high-risk cohort report.
+    query: risk_totals
+    type: kpi
+    value: patient_count
+
+  high_risk_patient_count:
+    description: Count of patients classified in the high risk tier.
+    query: risk_totals
+    type: kpi
+    value: high_risk_patient_count
+
+  open_care_gap_count:
+    description: Total open care gaps across patients in the risk report.
+    query: risk_totals
+    type: kpi
+    value: open_care_gap_count
+
+  risk_tier_distribution:
+    description: Shows patient count by risk tier.
+    query: risk_tier_distribution
+    type: bar
+    x: risk_tier
+    y: patient_count
+
+  safety_signal_type:
+    description: Compares safety signal volume by signal type.
+    query: safety_signal_type
+    type: bar
+    x: safety_signal_type
+    y: signal_event_count
+
+  high_risk_patients:
+    description: Lists patients most likely to need follow-up.
+    query: high_risk_patients
+    type: table
+
+  safety_signal_name:
+    description: Lists the most frequent named safety signals.
+    query: safety_signal_name
+    type: table
+
+rows:
+  - cols:
+      - patient_count
+      - high_risk_patient_count
+      - open_care_gap_count
+  - cols:
+      - risk_tier_distribution
+      - safety_signal_type
+  - high_risk_patients
+  - safety_signal_name

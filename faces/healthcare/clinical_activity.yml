@@ -1,0 +1,111 @@
+title: Clinical Activity
+description: Chronic conditions, immunizations, medication orders, procedures, and observation trends.
+tags:
+  - healthcare
+  - clinical-activity
+source: healthcare
+
+queries:
+  chronic_conditions_top:
+    description: Top chronic conditions by affected patient count.
+    sql: |
+      select
+          condition_name,
+          sum(patient_count) as patient_count,
+          sum(active_condition_count) as active_condition_count,
+          sum(confirmed_condition_count) as confirmed_condition_count
+      from {{ ref('rpt_chronic_conditions') }}
+      group by 1
+      order by patient_count desc
+      limit 10
+
+  immunization_trend:
+    description: Monthly immunization and completed immunization counts.
+    sql: |
+      select
+          occurrence_month,
+          sum(immunization_count) as immunization_count,
+          sum(completed_immunization_count) as completed_immunization_count
+      from {{ ref('rpt_immunization_coverage') }}
+      group by 1
+      order by 1
+
+  medication_status:
+    description: Medication request counts by status.
+    sql: |
+      select
+          coalesce(medication_request_status, 'unknown') as medication_request_status,
+          sum(medication_request_count) as medication_request_count,
+          sum(active_medication_request_count) as active_medication_request_count,
+          sum(medication_order_count) as medication_order_count
+      from {{ ref('rpt_medication_orders') }}
+      group by 1
+      order by medication_request_count desc
+
+  procedure_volume_top:
+    description: Top procedures by performed procedure count.
+    sql: |
+      select
+          procedure_name,
+          sum(procedure_count) as procedure_count,
+          sum(completed_procedure_count) as completed_procedure_count,
+          sum(patient_count) as patient_count
+      from {{ ref('rpt_procedure_volume') }}
+      group by 1
+      order by procedure_count desc
+      limit 10
+
+  observation_trends_top:
+    description: Top numeric observations by observation count and abnormal count.
+    sql: |
+      select
+          observation_name,
+          sum(observation_count) as observation_count,
+          sum(abnormal_observation_count) as abnormal_observation_count,
+          round(avg(average_value_quantity), 2) as average_value_quantity
+      from {{ ref('rpt_observation_trends') }}
+      group by 1
+      order by observation_count desc
+      limit 10
+
+charts:
+  chronic_conditions_top:
+    description: Ranks chronic conditions by affected patient count.
+    query: chronic_conditions_top
+    type: bar
+    x: condition_name
+    y: patient_count
+
+  immunization_trend:
+    description: Tracks immunization documentation over time.
+    query: immunization_trend
+    type: line
+    x: occurrence_month
+    y: completed_immunization_count
+
+  medication_status:
+    description: Shows medication request volume by status.
+    query: medication_status
+    type: bar
+    x: medication_request_status
+    y: medication_request_count
+
+  procedure_volume_top:
+    description: Ranks procedures by documented volume.
+    query: procedure_volume_top
+    type: bar
+    x: procedure_name
+    y: procedure_count
+
+  observation_trends_top:
+    description: Lists common numeric observations and abnormal result counts.
+    query: observation_trends_top
+    type: table
+
+rows:
+  - chronic_conditions_top
+  - immunization_trend
+  - cols:
+      - medication_status
+      - procedure_volume_top
+  - observation_trends_top

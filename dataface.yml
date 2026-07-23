@@ -1,0 +1,4 @@
+sources:
+  healthcare:
+    type: dbt_profile
+    profile: healthcare
