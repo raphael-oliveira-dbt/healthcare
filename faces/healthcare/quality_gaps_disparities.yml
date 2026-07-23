@@ -1,0 +1,130 @@
+title: Quality, Gaps & Disparities
+description: Clinical quality performance, preventive care gaps, and demographic disparities.
+tags:
+  - healthcare
+  - quality
+  - care-gaps
+  - disparities
+source: healthcare
+
+queries:
+  quality_totals:
+    description: Single-row clinical quality denominator, numerator, and gap totals.
+    sql: |
+      select
+          sum(denominator_count) as denominator_count,
+          sum(numerator_count) as numerator_count,
+          sum(gap_count) as gap_count,
+          round(100.0 * sum(numerator_count) / nullif(sum(denominator_count), 0), 2) as overall_performance_rate
+      from {{ ref('rpt_clinical_quality') }}
+
+  quality_by_measure:
+    description: Quality performance by measure with numerator, denominator, and gap counts.
+    sql: |
+      select
+          measure_name,
+          sum(denominator_count) as denominator_count,
+          sum(numerator_count) as numerator_count,
+          sum(gap_count) as gap_count,
+          round(100.0 * sum(numerator_count) / nullif(sum(denominator_count), 0), 2) as quality_score
+      from {{ ref('rpt_clinical_quality') }}
+      group by 1
+      order by denominator_count desc
+
+  care_gaps_by_gap:
+    description: Open preventive care gap patient count by care gap.
+    sql: |
+      select
+          care_gap_name,
+          sum(patient_count) as patient_count
+      from {{ ref('rpt_preventive_care_gaps') }}
+      group by 1
+      order by patient_count desc
+      limit 10
+
+  care_gaps_by_age_band:
+    description: Open preventive care gap patient count by age band.
+    sql: |
+      select
+          coalesce(age_band, 'unknown') as age_band,
+          sum(patient_count) as patient_count
+      from {{ ref('rpt_preventive_care_gaps') }}
+      group by 1
+      order by patient_count desc
+
+  disparities_by_measure:
+    description: Quality-rate spread from average by measure and cohort.
+    sql: |
+      select
+          measure_name,
+          coalesce(gender, 'unknown') as gender,
+          coalesce(age_band, 'unknown') as age_band,
+          denominator_count,
+          numerator_count,
+          performance_rate,
+          rate_difference_from_measure_average
+      from {{ ref('rpt_disparities') }}
+      order by abs(rate_difference_from_measure_average) desc
+      limit 25
+
+charts:
+  denominator_count:
+    description: Total eligible denominator events across quality measures.
+    query: quality_totals
+    type: kpi
+    value: denominator_count
+
+  overall_performance_rate:
+    description: Overall numerator-over-denominator quality rate.
+    query: quality_totals
+    type: kpi
+    value: overall_performance_rate
+    style:
+      value:
+        format: percent_whole
+
+  gap_count:
+    description: Total quality gaps across reported measures.
+    query: quality_totals
+    type: kpi
+    value: gap_count
+
+  quality_by_measure:
+    description: Compares quality performance rates by measure.
+    query: quality_by_measure
+    type: bar
+    x: measure_name
+    y: quality_score
+    style:
+      axis_y:
+        format: percent
+
+  care_gaps_by_gap:
+    description: Ranks open preventive care gaps by affected patient count.
+    query: care_gaps_by_gap
+    type: bar
+    x: care_gap_name
+    y: patient_count
+
+  care_gaps_by_age_band:
+    description: Shows care gap burden across age bands.
+    query: care_gaps_by_age_band
+    type: bar
+    x: age_band
+    y: patient_count
+
+  disparities_by_measure:
+    description: Lists cohorts with the largest quality-rate differences from measure averages.
+    query: disparities_by_measure
+    type: table
+
+rows:
+  - cols:
+      - denominator_count
+      - overall_performance_rate
+      - gap_count
+  - quality_by_measure
+  - cols:
+      - care_gaps_by_gap
+      - care_gaps_by_age_band
+  - disparities_by_measure

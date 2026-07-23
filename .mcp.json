@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "dataface": {
+      "command": "/Users/carlos/git/healthcare/.venv/bin/dft",
+      "args": [
+        "mcp",
+        "serve"
+      ]
+    }
+  }
+}

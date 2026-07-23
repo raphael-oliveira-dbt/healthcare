@@ -1,0 +1,121 @@
+title: Population & Access
+description: Patient population mix and care access/utilization from the reporting mart.
+tags:
+  - healthcare
+  - population
+  - access
+source: healthcare
+
+queries:
+  population_totals:
+    description: Single-row population and clinical activity totals.
+    sql: |
+      select
+          sum(patient_count) as patient_count,
+          round(sum(patient_count * average_age_years) / nullif(sum(patient_count), 0), 1) as average_age_years,
+          sum(encounter_count) as encounter_count,
+          sum(condition_count) as condition_count,
+          sum(completed_immunization_count) as completed_immunization_count,
+          sum(medication_request_count) as medication_request_count,
+          sum(procedure_count) as procedure_count
+      from {{ ref('rpt_population_overview') }}
+
+  population_by_age_band:
+    description: Patient count by age band for population mix.
+    sql: |
+      select
+          coalesce(age_band, 'unknown') as age_band,
+          sum(patient_count) as patient_count
+      from {{ ref('rpt_population_overview') }}
+      group by 1
+      order by 1
+
+  population_by_gender:
+    description: Patient count by gender for demographic mix.
+    sql: |
+      select
+          coalesce(gender, 'unknown') as gender,
+          sum(patient_count) as patient_count
+      from {{ ref('rpt_population_overview') }}
+      group by 1
+      order by patient_count desc
+
+  encounter_trend:
+    description: Monthly encounter and active patient counts.
+    sql: |
+      select
+          activity_month,
+          sum(encounter_count) as encounter_count,
+          sum(active_patient_count) as active_patient_count,
+          sum(total_clinical_event_count) as total_clinical_event_count
+      from {{ ref('rpt_encounter_utilization') }}
+      group by 1
+      order by 1
+
+  encounter_by_age_band:
+    description: Encounter volume and completion rate by age band.
+    sql: |
+      select
+          coalesce(age_band, 'unknown') as age_band,
+          sum(encounter_count) as encounter_count,
+          sum(finished_encounter_count) as finished_encounter_count,
+          round(100.0 * sum(finished_encounter_count) / nullif(sum(encounter_count), 0), 2) as finished_encounter_rate
+      from {{ ref('rpt_encounter_utilization') }}
+      group by 1
+      order by encounter_count desc
+
+charts:
+  patient_count:
+    description: Total patients represented in the population report.
+    query: population_totals
+    type: kpi
+    value: patient_count
+
+  average_age:
+    description: Weighted average patient age across reported segments.
+    query: population_totals
+    type: kpi
+    value: average_age_years
+
+  total_encounters:
+    description: Total encounter count across reported population segments.
+    query: population_totals
+    type: kpi
+    value: encounter_count
+
+  population_by_age_band:
+    description: Shows how patients are distributed across age bands.
+    query: population_by_age_band
+    type: bar
+    x: age_band
+    y: patient_count
+
+  population_by_gender:
+    description: Shows patient distribution by documented gender.
+    query: population_by_gender
+    type: pie
+    theta: patient_count
+    color: gender
+
+  encounter_trend:
+    description: Tracks monthly encounter and active patient counts.
+    query: encounter_trend
+    type: line
+    x: activity_month
+    y: encounter_count
+
+  encounter_by_age_band:
+    description: Compares encounter volume and completion rates by age band.
+    query: encounter_by_age_band
+    type: table
+
+rows:
+  - cols:
+      - patient_count
+      - average_age
+      - total_encounters
+  - cols:
+      - population_by_age_band
+      - population_by_gender
+  - encounter_trend
+  - encounter_by_age_band

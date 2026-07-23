@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: dim_condition
+    description: Conformed condition dimension with one row per condition coding and display combination observed in the condition fact.
+    columns:
+      - name: condition_key
+        description: Stable key for the condition coding and display combination.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: dim_encounter_class
+    description: Conformed encounter class dimension with one row per encounter class code and display combination.
+    columns:
+      - name: encounter_class_key
+        description: Stable key for the encounter class coding and display combination.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: dim_medication
+    description: Conformed medication dimension with one row per medication coding and display combination observed in medication requests.
+    columns:
+      - name: medication_key
+        description: Stable key for the medication coding and display combination.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: dim_observation
+    description: Conformed observation dimension with one row per observation coding, category, and display combination.
+    columns:
+      - name: observation_key
+        description: Stable key for the observation coding, category, and display combination.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: dim_procedure
+    description: Conformed procedure dimension with one row per procedure coding, category, and display combination.
+    columns:
+      - name: procedure_key
+        description: Stable key for the procedure coding, category, and display combination.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: agg_patient_clinical_profile
+    description: Patient-level aggregate profile with demographics, clinical activity counts, latest event dates, and high-level chronic condition flags.
+    columns:
+      - name: patient_id
+        description: Primary key for the patient clinical profile.
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+
+  - name: agg_monthly_clinical_activity
+    description: Monthly clinical activity aggregate by activity month, gender, and age band.
+    columns:
+      - name: monthly_activity_key
+        description: Primary key for the monthly activity, gender, and age-band grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: agg_quality_measure_summary
+    description: Quality measure aggregate by measure, gender, and age band using analytics-oriented denominator and numerator flags.
+    columns:
+      - name: quality_measure_key
+        description: Primary key for the quality measure, gender, and age-band grain.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: agg_patient_care_gaps
+    description: Patient care-gap aggregate with one row per open heuristic gap per patient.
+    columns:
+      - name: care_gap_key
+        description: Primary key for the patient and care-gap code grain.
+        data_tests:
+          - not_null
+          - unique
+      - name: patient_id
+        description: Foreign key to the patient dimension.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
