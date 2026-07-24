@@ -69,7 +69,7 @@ models:
           - unique
 
   - name: agg_quality_measure_summary
-    description: Quality measure aggregate by measure, gender, and age band using analytics-oriented denominator and numerator flags.
+    description: Quality measure aggregate by measure, gender, and age band using analytics-oriented denominator and numerator flags anchored to the latest observed clinical event date.
     columns:
       - name: quality_measure_key
         description: Primary key for the quality measure, gender, and age-band grain.
@@ -78,7 +78,7 @@ models:
           - unique
 
   - name: agg_patient_care_gaps
-    description: Patient care-gap aggregate with one row per open heuristic gap per patient.
+    description: Patient care-gap aggregate with one row per open heuristic gap per patient anchored to the latest observed clinical event date.
     columns:
       - name: care_gap_key
         description: Primary key for the patient and care-gap code grain.

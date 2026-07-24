@@ -1,52 +1,74 @@
-with patient_flags as (
+with reporting_as_of as (
+
+    select max(activity_date) as reporting_as_of_date
+    from (
+        select max(latest_encounter_date) as activity_date
+        from {{ ref('agg_patient_clinical_profile') }}
+
+        union all
+
+        select max(effective_date) as activity_date
+        from {{ ref('fct_observation') }}
+
+        union all
+
+        select max(latest_immunization_date) as activity_date
+        from {{ ref('agg_patient_clinical_profile') }}
+    ) as activity_dates
+
+),
+
+patient_flags as (
 
     select
-        patient_id,
-        gender,
-        age_years,
-        age_band,
+        patient_profile.patient_id,
+        patient_profile.gender,
+        patient_profile.age_years,
+        patient_profile.age_band,
+        patient_profile.has_diabetes,
         case
-            when latest_encounter_date is not null
-                and date_diff(current_date(), latest_encounter_date, month) <= 12
+            when patient_profile.latest_encounter_date is not null
+                and date_diff(reporting_as_of.reporting_as_of_date, patient_profile.latest_encounter_date, month) <= 12
                 then 1
             else 0
         end as has_recent_encounter,
         case
-            when latest_immunization_date is not null
-                and date_diff(current_date(), latest_immunization_date, month) <= 12
+            when patient_profile.latest_immunization_date is not null
+                and date_diff(reporting_as_of.reporting_as_of_date, patient_profile.latest_immunization_date, month) <= 12
                 then 1
             else 0
-        end as has_recent_immunization,
-        has_diabetes
-    from {{ ref('agg_patient_clinical_profile') }}
+        end as has_recent_immunization
+    from {{ ref('agg_patient_clinical_profile') }} as patient_profile
+    cross join reporting_as_of
 
 ),
 
 observation_flags as (
 
     select
-        patient_id,
+        observation.patient_id,
         max(case
             when (
-                lower(observation_name) like '%blood pressure%'
-                or observation_code in ('85354-9', '8480-6', '8462-4')
+                lower(observation.observation_name) like '%blood pressure%'
+                or observation.observation_code in ('85354-9', '8480-6', '8462-4')
             )
-            and date_diff(current_date(), effective_date, month) <= 12
+            and date_diff(reporting_as_of.reporting_as_of_date, observation.effective_date, month) <= 12
                 then 1
             else 0
         end) as has_recent_blood_pressure,
         max(case
             when (
-                lower(observation_name) like '%a1c%'
-                or lower(observation_name) like '%hemoglobin a1c%'
-                or observation_code in ('4548-4', '17856-6')
+                lower(observation.observation_name) like '%a1c%'
+                or lower(observation.observation_name) like '%hemoglobin a1c%'
+                or observation.observation_code in ('4548-4', '17856-6')
             )
-            and date_diff(current_date(), effective_date, month) <= 6
+            and date_diff(reporting_as_of.reporting_as_of_date, observation.effective_date, month) <= 6
                 then 1
             else 0
         end) as has_recent_diabetes_monitoring
-    from {{ ref('fct_observation') }}
-    group by patient_id
+    from {{ ref('fct_observation') }} as observation
+    cross join reporting_as_of
+    group by observation.patient_id
 
 ),
 
@@ -115,11 +137,11 @@ measure_rows as (
 )
 
 select
-    concat(measure_id, '|', coalesce(gender, 'unknown'), '|', coalesce(age_band, 'unknown')) as quality_measure_key,
     measure_id,
     measure_name,
     gender,
     age_band,
+    concat(measure_id, '|', coalesce(gender, 'unknown'), '|', coalesce(age_band, 'unknown')) as quality_measure_key,
     sum(denominator_flag) as denominator_count,
     sum(numerator_flag) as numerator_count,
     sum(denominator_flag) - sum(numerator_flag) as gap_count,
