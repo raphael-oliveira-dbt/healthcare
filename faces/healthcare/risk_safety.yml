@@ -82,51 +82,141 @@ charts:
     description: Total patients in the high-risk cohort report.
     query: risk_totals
     type: kpi
+    label: Risk Cohort Patients
     value: patient_count
 
   high_risk_patient_count:
     description: Count of patients classified in the high risk tier.
     query: risk_totals
     type: kpi
+    label: High Risk Patients
     value: high_risk_patient_count
 
   open_care_gap_count:
     description: Total open care gaps across patients in the risk report.
     query: risk_totals
     type: kpi
+    label: Open Care Gaps
     value: open_care_gap_count
 
   risk_tier_distribution:
     description: Shows patient count by risk tier.
     query: risk_tier_distribution
     type: bar
+    title: Risk tier distribution
+    subtitle: Patient counts by assigned follow-up risk tier.
     x: risk_tier
     y: patient_count
+    x_label: Risk tier
+    y_label: Patients
 
   safety_signal_type:
     description: Compares safety signal volume by signal type.
     query: safety_signal_type
     type: bar
+    title: Safety signals by type
+    subtitle: Event counts grouped by safety signal category.
     x: safety_signal_type
     y: signal_event_count
+    x_label: Safety signal type
+    y_label: Events
 
   high_risk_patients:
     description: Lists patients most likely to need follow-up.
     query: high_risk_patients
     type: table
+    title: Highest-priority patients
+    subtitle: Patients ranked by risk tier, open care gaps, and active conditions.
+    style:
+      columns:
+        patient_name:
+          label: Patient
+          width: 360
+        gender:
+          label: Gender
+          width: 90
+        age_years:
+          label: Age
+          width: 70
+          align: right
+        age_band:
+          label: Age band
+          width: 90
+        risk_tier:
+          label: Risk tier
+          width: 100
+        encounter_count:
+          label: Encounters
+          width: 110
+          format: integer
+          align: right
+        active_condition_count:
+          label: Active conditions
+          width: 120
+          format: integer
+          align: right
+        abnormal_observation_count:
+          label: Abnormal obs.
+          width: 120
+          format: integer
+          align: right
+        active_medication_request_count:
+          label: Active meds
+          width: 120
+          format: integer
+          align: right
+        open_care_gap_count:
+          label: Open gaps
+          width: 110
+          format: integer
+          align: right
 
   safety_signal_name:
     description: Lists the most frequent named safety signals.
     query: safety_signal_name
     type: table
+    title: Most frequent safety signals
+    subtitle: Named safety signals ranked by event count.
+    style:
+      columns:
+        safety_signal_name:
+          label: Safety signal
+          width: 760
+          header_overflow: wrap-two
+        safety_signal_type:
+          label: Type
+          width: 190
+        signal_event_count:
+          label: Events
+          width: 90
+          format: integer
+          align: right
+        patient_count:
+          label: Patients
+          width: 90
+          format: integer
+          align: right
+        latest_signal_date:
+          label: Latest signal
+          width: 130
 
 rows:
-  - cols:
+  - title: Scorecard
+    text: Follow-up cohort size, high-risk volume, and open care gap burden.
+    cols:
       - patient_count
       - high_risk_patient_count
       - open_care_gap_count
-  - cols:
+  - title: Risk and safety mix
+    text: Where patient risk and safety signal volume are concentrated.
+    cols:
       - risk_tier_distribution
       - safety_signal_type
-  - high_risk_patients
-  - safety_signal_name
+  - title: Patient follow-up detail
+    text: Highest-priority patients for review or outreach.
+    rows:
+      - high_risk_patients
+  - title: Safety signal detail
+    text: Named signals driving safety-event volume.
+    rows:
+      - safety_signal_name

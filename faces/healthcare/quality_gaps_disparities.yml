@@ -26,7 +26,7 @@ queries:
           sum(denominator_count) as denominator_count,
           sum(numerator_count) as numerator_count,
           sum(gap_count) as gap_count,
-          round(100.0 * sum(numerator_count) / nullif(sum(denominator_count), 0), 2) as quality_score
+          round(sum(numerator_count) / nullif(sum(denominator_count), 0), 4) as quality_score
       from {{ ref('rpt_clinical_quality') }}
       group by 1
       order by denominator_count desc
@@ -61,8 +61,8 @@ queries:
           coalesce(age_band, 'unknown') as age_band,
           denominator_count,
           numerator_count,
-          performance_rate,
-          rate_difference_from_measure_average
+          performance_rate / 100.0 as performance_rate,
+          rate_difference_from_measure_average / 100.0 as rate_difference_from_measure_average
       from {{ ref('rpt_disparities') }}
       order by abs(rate_difference_from_measure_average) desc
       limit 25
@@ -72,59 +72,118 @@ charts:
     description: Total eligible denominator events across quality measures.
     query: quality_totals
     type: kpi
+    label: Eligible Events
     value: denominator_count
 
   overall_performance_rate:
     description: Overall numerator-over-denominator quality rate.
     query: quality_totals
     type: kpi
+    label: Overall Performance
     value: overall_performance_rate
     style:
       value:
-        format: percent_whole
+        format: percent_number
 
   gap_count:
     description: Total quality gaps across reported measures.
     query: quality_totals
     type: kpi
+    label: Open Quality Gaps
     value: gap_count
 
   quality_by_measure:
     description: Compares quality performance rates by measure.
     query: quality_by_measure
     type: bar
+    title: Quality performance by measure
+    subtitle: Percent of eligible patients/events meeting each quality measure.
     x: measure_name
     y: quality_score
+    x_label: Measure
+    y_label: Performance rate
     style:
       axis_y:
-        format: percent
+        format: percent_whole
 
   care_gaps_by_gap:
     description: Ranks open preventive care gaps by affected patient count.
     query: care_gaps_by_gap
     type: bar
+    title: Largest preventive care gaps
+    subtitle: Patient counts for the most common open gaps.
     x: care_gap_name
     y: patient_count
+    x_label: Open gaps
+    y_label: Patients
 
   care_gaps_by_age_band:
     description: Shows care gap burden across age bands.
     query: care_gaps_by_age_band
     type: bar
+    title: Care gaps by age band
+    subtitle: Patient counts with at least one open preventive care gap.
     x: age_band
     y: patient_count
+    x_label: Age band
+    y_label: Patients
 
   disparities_by_measure:
     description: Lists cohorts with the largest quality-rate differences from measure averages.
     query: disparities_by_measure
     type: table
+    title: Largest demographic quality gaps
+    subtitle: Cohorts furthest above or below their measure average.
+    style:
+      columns:
+        measure_name:
+          label: Measure
+          width: 600
+          header_overflow: wrap-two
+        gender:
+          label: Gender
+          width: 90
+        age_band:
+          label: Age band
+          width: 90
+        denominator_count:
+          label: Eligible
+          width: 100
+          format: integer
+          align: right
+        numerator_count:
+          label: Met
+          width: 80
+          format: integer
+          align: right
+        performance_rate:
+          label: Rate
+          width: 90
+          format: percent
+          align: right
+        rate_difference_from_measure_average:
+          label: Vs measure avg
+          width: 120
+          format: percent_delta
+          align: right
 
 rows:
-  - cols:
+  - title: Scorecard
+    text: Headline quality totals across the reported clinical measures.
+    cols:
       - denominator_count
       - overall_performance_rate
       - gap_count
-  - quality_by_measure
-  - cols:
+  - title: Measure performance
+    text: Which clinical quality measures are performing best or need attention.
+    rows:
+      - quality_by_measure
+  - title: Preventive care gaps
+    text: Where unresolved care gaps are concentrated by gap type and patient age band.
+    cols:
       - care_gaps_by_gap
       - care_gaps_by_age_band
-  - disparities_by_measure
+  - title: Disparities detail
+    text: Demographic cohorts with the largest difference from the average rate for the same measure.
+    rows:
+      - disparities_by_measure

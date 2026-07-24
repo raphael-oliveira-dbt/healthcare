@@ -1,4 +1,25 @@
-with patient as (
+with reporting_as_of as (
+
+    select max(activity_date) as reporting_as_of_date
+    from (
+        select max(encounter_date) as activity_date
+        from {{ ref('fct_encounter') }}
+
+        union all
+
+        select max(effective_date) as activity_date
+        from {{ ref('fct_observation') }}
+
+        union all
+
+        select max(occurrence_date) as activity_date
+        from {{ ref('fct_immunization') }}
+        where is_completed_immunization
+    ) as activity_dates
+
+),
+
+patient as (
 
     select *
     from {{ ref('dim_patient') }}
@@ -76,13 +97,15 @@ patient_gap_inputs as (
         patient.gender,
         patient.age_years,
         patient.age_band,
-        coalesce(condition_activity.has_diabetes, 0) as has_diabetes,
-        coalesce(medication_activity.has_active_medication_request, 0) as has_active_medication_request,
         encounter_activity.latest_encounter_date,
         observation_activity.latest_blood_pressure_date,
         observation_activity.latest_diabetes_monitoring_date,
-        immunization_activity.latest_immunization_date
+        immunization_activity.latest_immunization_date,
+        reporting_as_of.reporting_as_of_date,
+        coalesce(condition_activity.has_diabetes, 0) as has_diabetes,
+        coalesce(medication_activity.has_active_medication_request, 0) as has_active_medication_request
     from patient
+    cross join reporting_as_of
     left join encounter_activity
         on patient.patient_id = encounter_activity.patient_id
     left join observation_activity
@@ -108,7 +131,7 @@ care_gaps as (
         latest_encounter_date as latest_relevant_event_date
     from patient_gap_inputs
     where latest_encounter_date is null
-        or date_diff(current_date(), latest_encounter_date, month) > 12
+        or date_diff(reporting_as_of_date, latest_encounter_date, month) > 12
 
     union all
 
@@ -124,7 +147,7 @@ care_gaps as (
     where age_years >= 18
         and (
             latest_blood_pressure_date is null
-            or date_diff(current_date(), latest_blood_pressure_date, month) > 12
+            or date_diff(reporting_as_of_date, latest_blood_pressure_date, month) > 12
         )
 
     union all
@@ -141,7 +164,7 @@ care_gaps as (
     where has_diabetes = 1
         and (
             latest_diabetes_monitoring_date is null
-            or date_diff(current_date(), latest_diabetes_monitoring_date, month) > 6
+            or date_diff(reporting_as_of_date, latest_diabetes_monitoring_date, month) > 6
         )
 
     union all
@@ -156,7 +179,7 @@ care_gaps as (
         latest_immunization_date as latest_relevant_event_date
     from patient_gap_inputs
     where latest_immunization_date is null
-        or date_diff(current_date(), latest_immunization_date, month) > 12
+        or date_diff(reporting_as_of_date, latest_immunization_date, month) > 12
 
     union all
 
@@ -172,13 +195,12 @@ care_gaps as (
     where has_active_medication_request = 1
         and (
             latest_encounter_date is null
-            or date_diff(current_date(), latest_encounter_date, month) > 12
+            or date_diff(reporting_as_of_date, latest_encounter_date, month) > 12
         )
 
 )
 
 select
-    concat(patient_id, '|', care_gap_code) as care_gap_key,
     patient_id,
     gender,
     age_years,
@@ -186,5 +208,6 @@ select
     care_gap_code,
     care_gap_name,
     latest_relevant_event_date,
-    'open' as care_gap_status
+    'open' as care_gap_status,
+    concat(patient_id, '|', care_gap_code) as care_gap_key
 from care_gaps

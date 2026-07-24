@@ -59,7 +59,7 @@ queries:
           coalesce(age_band, 'unknown') as age_band,
           sum(encounter_count) as encounter_count,
           sum(finished_encounter_count) as finished_encounter_count,
-          round(100.0 * sum(finished_encounter_count) / nullif(sum(encounter_count), 0), 2) as finished_encounter_rate
+          round(sum(finished_encounter_count) / nullif(sum(encounter_count), 0), 4) as finished_encounter_rate
       from {{ ref('rpt_encounter_utilization') }}
       group by 1
       order by encounter_count desc
@@ -69,31 +69,40 @@ charts:
     description: Total patients represented in the population report.
     query: population_totals
     type: kpi
+    label: Patients
     value: patient_count
 
   average_age:
     description: Weighted average patient age across reported segments.
     query: population_totals
     type: kpi
+    label: Average Age
     value: average_age_years
 
   total_encounters:
     description: Total encounter count across reported population segments.
     query: population_totals
     type: kpi
+    label: Encounters
     value: encounter_count
 
   population_by_age_band:
     description: Shows how patients are distributed across age bands.
     query: population_by_age_band
     type: bar
+    title: Population by age band
+    subtitle: Patient counts grouped into standard age bands.
     x: age_band
     y: patient_count
+    x_label: Age band
+    y_label: Patients
 
   population_by_gender:
     description: Shows patient distribution by documented gender.
     query: population_by_gender
     type: pie
+    title: Population by gender
+    subtitle: Patient share by documented gender.
     theta: patient_count
     color: gender
 
@@ -101,21 +110,53 @@ charts:
     description: Tracks monthly encounter and active patient counts.
     query: encounter_trend
     type: line
+    title: Encounter access over time
+    subtitle: Monthly encounter volume.
     x: activity_month
     y: encounter_count
+    x_label: Month
+    y_label: Count
 
   encounter_by_age_band:
     description: Compares encounter volume and completion rates by age band.
     query: encounter_by_age_band
     type: table
+    title: Encounter completion by age band
+    subtitle: Encounter volume and finished-encounter rate by patient age band.
+    style:
+      columns:
+        age_band:
+          label: Age band
+        encounter_count:
+          label: Encounters
+          format: integer
+          align: right
+        finished_encounter_count:
+          label: Finished
+          format: integer
+          align: right
+        finished_encounter_rate:
+          label: Finished rate
+          format: percent
+          align: right
 
 rows:
-  - cols:
+  - title: Scorecard
+    text: Core population and access totals for the reporting mart.
+    cols:
       - patient_count
       - average_age
       - total_encounters
-  - cols:
+  - title: Population mix
+    text: How the patient population is distributed by age and documented gender.
+    cols:
       - population_by_age_band
       - population_by_gender
-  - encounter_trend
-  - encounter_by_age_band
+  - title: Access trend
+    text: Monthly encounter activity and active patient volume.
+    rows:
+      - encounter_trend
+  - title: Encounter completion detail
+    text: Encounter volumes and completion rates across age bands.
+    rows:
+      - encounter_by_age_band

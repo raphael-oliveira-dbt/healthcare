@@ -73,39 +73,88 @@ charts:
     description: Ranks chronic conditions by affected patient count.
     query: chronic_conditions_top
     type: bar
+    title: Most common chronic conditions
+    subtitle: Patient counts for the top documented chronic conditions.
     x: condition_name
     y: patient_count
+    x_label: Condition
+    y_label: Patients
 
   immunization_trend:
     description: Tracks immunization documentation over time.
     query: immunization_trend
     type: line
+    title: Immunization documentation over time
+    subtitle: Monthly completed immunization records.
     x: occurrence_month
     y: completed_immunization_count
+    x_label: Month
+    y_label: Immunizations
 
   medication_status:
     description: Shows medication request volume by status.
     query: medication_status
     type: bar
+    title: Medication requests by status
+    subtitle: Medication request volume grouped by request status.
     x: medication_request_status
     y: medication_request_count
+    x_label: Medication request status
+    y_label: Requests
 
   procedure_volume_top:
     description: Ranks procedures by documented volume.
     query: procedure_volume_top
     type: bar
+    title: Highest-volume procedures
+    subtitle: Top documented procedures by procedure count.
     x: procedure_name
     y: procedure_count
+    x_label: Procedure
+    y_label: Procedures
 
   observation_trends_top:
     description: Lists common numeric observations and abnormal result counts.
     query: observation_trends_top
     type: table
+    title: Observation result patterns
+    subtitle: Common numeric observations with abnormal result volume and average values.
+    style:
+      columns:
+        observation_name:
+          label: Observation
+          width: 760
+          header_overflow: wrap-two
+        observation_count:
+          label: Observations
+          width: 150
+          format: integer
+          align: right
+        abnormal_observation_count:
+          label: Abnormal
+          width: 120
+          format: integer
+          align: right
+        average_value_quantity:
+          label: Avg value
+          width: 120
+          align: right
 
 rows:
-  - chronic_conditions_top
-  - immunization_trend
-  - cols:
+  - title: Conditions
+    text: Which chronic conditions affect the largest patient cohorts.
+    rows:
+      - chronic_conditions_top
+  - title: Immunizations
+    text: How immunization documentation is trending month by month.
+    rows:
+      - immunization_trend
+  - title: Orders and procedures
+    text: Operational clinical activity by medication status and procedure volume.
+    cols:
       - medication_status
       - procedure_volume_top
-  - observation_trends_top
+  - title: Observations
+    text: Numeric observation patterns that may require clinical follow-up.
+    rows:
+      - observation_trends_top
