@@ -34,5 +34,5 @@ clean-targets: # directories to be removed by `dbt clean`
 # using the `{{ config(...) }}` macro.
 
 models:
-  # healthcare:
-  # Applies to all files under models/example/
+  healthcare:
+    +static_analysis: strict
