@@ -69,44 +69,144 @@ models:
           - unique
 
   - name: agg_quality_measure_summary
-    description: Quality measure aggregate by measure, gender, and age band using analytics-oriented denominator and numerator flags anchored to the latest observed clinical event date.
+    description: >
+      Quality measure performance by measure, gender, and age band. For each segment it counts the
+      members eligible for a measure (denominator), the members who met it (numerator), and the
+      difference (gap_count). Performance is evaluated as of the latest clinical activity date in the
+      data, not today's date.
+
+
+      Measures and their rules:
+
+      - **recent_encounter**: any encounter in the last 12 months. All members are eligible.
+
+      - **adult_blood_pressure**: blood pressure observation within the governed lookback window.
+        Eligibility, window, and qualifying codes come from `hedis_measure_definitions` and
+        `hedis_measure_value_sets`.
+
+      - **diabetes_a1c_monitoring**: A1c observation within the governed lookback window for members
+        with a diabetes condition. Eligibility, window, and qualifying codes come from the same seeds.
+
+      - **recent_immunization_documentation**: a completed immunization in the last 12 months. All
+        members are eligible.
+
+
+      The blood pressure and A1c rules are governed in seeds. The encounter and immunization windows
+      are still fixed at 12 months in SQL. These are HEDIS-style measures for analytics; they are not
+      certified HEDIS calculations.
+    config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
     columns:
       - name: quality_measure_key
-        description: Primary key for the quality measure, gender, and age-band grain.
+        description: Primary key. Concatenation of measure_id, gender, and age_band, with 'unknown' for missing gender or age band.
         data_tests:
           - not_null
           - unique
+      - name: measure_id
+        description: Stable measure identifier. For governed measures, matches measure_id in hedis_measure_definitions.
+      - name: measure_name
+        description: Human-readable measure name. For governed measures, the lookback window in the name is generated from the seed, so the label always matches the rule applied.
+      - name: gender
+        description: Member gender as recorded on the FHIR Patient resource.
+      - name: age_band
+        description: Member age band from dim_patient.
+      - name: denominator_count
+        description: Members in this segment who are eligible for the measure, after applying any governed age range and condition requirement.
+      - name: numerator_count
+        description: Eligible members in this segment who met the measure within its lookback window.
+      - name: gap_count
+        description: Eligible members who did not meet the measure (denominator_count minus numerator_count). These are the members to target for outreach.
+      - name: performance_rate
+        description: >
+          numerator_count divided by denominator_count, as a percentage rounded to two decimals. Null
+          when the segment has no eligible members. Do not average this column across segments; to roll
+          up, sum numerator_count and denominator_count first, then divide.
 
   - name: agg_patient_care_gaps
-    description: Patient care-gap aggregate with one row per open heuristic gap per patient anchored to the latest observed clinical event date.
+    description: >
+      The member outreach list. One row per member per open care gap. A member with three open gaps
+      has three rows. Gaps are evaluated as of the latest clinical activity date in the data, not
+      today's date.
+
+
+      Gap rules:
+
+      - **annual_wellness_visit**: no encounter in the last 12 months.
+
+      - **blood_pressure_observation**: eligible adult with no qualifying blood pressure observation in
+        the governed lookback window.
+
+      - **diabetes_monitoring**: member with a diabetes condition, in the governed age range, with no
+        qualifying A1c observation in the governed lookback window.
+
+      - **immunization_review**: no completed immunization in the last 12 months.
+
+      - **medication_follow_up**: active medication request with no encounter in the last 12 months.
+
+
+      Blood pressure and A1c rules (lookback, age range, qualifying codes) are read from
+      `hedis_measure_definitions` and `hedis_measure_value_sets`, so a rule change happens in the seed,
+      not in this SQL. The A1c rule is covered by the unit test test_care_gaps_diabetes_a1c_lookback_rule.
+      History of every gap opening and closing is kept in the snap_patient_care_gaps snapshot.
+    config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: true
     columns:
       - name: care_gap_key
-        description: Primary key for the patient and care-gap code grain.
+        description: Primary key. Concatenation of patient_id and care_gap_code. Also the unique key the snapshot uses to track each gap over time.
         data_tests:
           - not_null
           - unique
       - name: patient_id
-        description: Foreign key to the patient dimension.
+        description: FHIR Patient id of the member with the open gap. Foreign key to dim_patient.
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_patient')
                 field: patient_id
+      - name: gender
+        description: Member gender as recorded on the FHIR Patient resource.
+      - name: age_years
+        description: Member age in whole years from dim_patient. Used for measure eligibility.
+      - name: age_band
+        description: Member age band from dim_patient.
+      - name: care_gap_code
+        description: Stable gap identifier. One of annual_wellness_visit, blood_pressure_observation, diabetes_monitoring, immunization_review, or medication_follow_up.
+      - name: care_gap_name
+        description: Plain-language description of the gap. For governed gaps, the lookback window in the text is generated from the seed, so the label always matches the rule applied.
+      - name: latest_relevant_event_date
+        description: Date of the member's most recent qualifying event for this gap (for example, their last A1c). Null means the member has never had a qualifying event.
+      - name: care_gap_status
+        description: Always 'open'. Closed gaps drop out of this model and are recorded as closed in snap_patient_care_gaps.
 
   - name: agg_patient_quality_measure_events
     description: >
-      One row per patient per quality measure with the latest observation that satisfies the measure,
-      matched on the governed LOINC value set (seeds/hedis_measure_value_sets.csv) or the governed
-      observation name pattern (seeds/hedis_measure_definitions.csv). This is the single place
-      measure-qualifying logic lives; agg_patient_care_gaps and agg_quality_measure_summary both read it.
+      The single place that decides which observations count toward a governed quality measure. One
+      row per member per measure, holding that member's most recent qualifying observation date.
+
+
+      An observation qualifies for a measure if either its code is in that measure's value set
+      (`hedis_measure_value_sets`), or its name matches the measure's observation_name_pattern
+      (`hedis_measure_definitions`). Both agg_patient_care_gaps and agg_quality_measure_summary read
+      from this model, so the gap list and the quality rate always use the same definition.
+
+
+      Members with no qualifying observation for a measure have no row for that measure.
+    config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: true
     columns:
       - name: patient_measure_key
-        description: Primary key for the patient and measure grain.
+        description: Primary key. Concatenation of patient_id and measure_id.
         data_tests:
           - not_null
           - unique
       - name: patient_id
-        description: Foreign key to the patient dimension.
+        description: FHIR Patient id. Foreign key to dim_patient.
         data_tests:
           - not_null
           - relationships:
@@ -114,7 +214,7 @@ models:
                 to: ref('dim_patient')
                 field: patient_id
       - name: measure_id
-        description: Governed measure identifier from hedis_measure_definitions.
+        description: Governed measure identifier. Foreign key to hedis_measure_definitions.
         data_tests:
           - not_null
           - relationships:
@@ -122,16 +222,16 @@ models:
                 to: ref('hedis_measure_definitions')
                 field: measure_id
       - name: latest_qualifying_event_date
-        description: Most recent observation date that satisfies the measure for this patient.
+        description: Effective date of the member's most recent observation that satisfies the measure. Downstream models compare this to the lookback window to decide whether the member met the measure.
 
 unit_tests:
   - name: test_care_gaps_diabetes_a1c_lookback_rule
     description: >
-      Encodes the diabetes A1c monitoring rule as an executable specification.
-      Given a reporting as-of date of 2026-06-30 and the lookback in hedis_measure_definitions (6 months):
-      an A1c 7 calendar months old opens a gap, an A1c 4 months old does not, and an A1c exactly
-      6 calendar months old is treated as compliant. If the governed rule changes, this test fails and
-      shows exactly which patients flip, so the change has to be reviewed and acknowledged in the PR.
+      Executable specification of the diabetes A1c monitoring rule. With a reporting as-of date of
+      2026-06-30 and a 6-month lookback: an A1c 7 calendar months old opens a gap, an A1c 4 months
+      old does not, and an A1c exactly 6 calendar months old counts as compliant. The rule parameters
+      are mocked in this test, so it fails when the model's logic changes (for example, an off-by-one
+      boundary bug), and dbt refuses to build the model until it is fixed.
     model: agg_patient_care_gaps
     given:
       - input: ref('dim_patient')
@@ -169,7 +269,7 @@ unit_tests:
       - input: ref('hedis_measure_definitions')
         rows:
           - {measure_id: adult_blood_pressure, measure_label: blood pressure observation, lookback_months: 12, min_age_years: 18, max_age_years: null}
-          - {measure_id: diabetes_a1c_monitoring, measure_label: A1c observation, lookback_months: 6, min_age_years: null, max_age_years: null}
+          - {measure_id: diabetes_a1c_monitoring, measure_label: A1c observation, lookback_months: 6, min_age_years: 18, max_age_years: 75}
     expect:
       rows:
         - {patient_id: p_a1c_overdue, care_gap_code: diabetes_monitoring, care_gap_name: "Diabetes cohort without A1c observation in the last 6 months"}

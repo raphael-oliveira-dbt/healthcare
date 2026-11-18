@@ -29,69 +29,95 @@ models:
           - unique
 
   - name: rpt_clinical_quality
-    description: Dashboard-facing clinical quality measure summary by measure, gender, and age band. Contract-enforced because it feeds quality reporting; the column names and types cannot change without a deliberate, reviewed contract update.
+    description: >
+      The quality reporting output. Measure performance by measure, gender, and age band, exposed for
+      dashboards and quality reporting. A thin, contract-protected layer over agg_quality_measure_summary.
+
+
+      The contract is enforced: column names and data types cannot change without a deliberate,
+      reviewed update to this file, so a downstream report can't silently break. To get a plan-level
+      rate, sum numerator_count and denominator_count across segments, then divide. Don't average
+      performance_rate.
     config:
       contract:
         enforced: true
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
     columns:
       - name: clinical_quality_report_key
         data_type: string
-        description: Primary key for the quality measure segment grain.
+        description: Primary key. Concatenation of measure_id, gender, and age_band.
         data_tests:
           - not_null
           - unique
       - name: measure_id
         data_type: string
-        description: Governed measure identifier.
+        description: Stable measure identifier. For governed measures, matches hedis_measure_definitions.
       - name: measure_name
         data_type: string
-        description: Human-readable measure name built from the governed rule parameters.
+        description: Human-readable measure name. The lookback window in the name is generated from the governed rule, so it always matches the rule applied.
       - name: gender
         data_type: string
+        description: Member gender segment.
       - name: age_band
         data_type: string
+        description: Member age band segment.
       - name: denominator_count
         data_type: int64
-        description: Eligible patients for the measure.
+        description: Members in the segment eligible for the measure.
       - name: numerator_count
         data_type: int64
-        description: Eligible patients who met the measure.
+        description: Eligible members in the segment who met the measure.
       - name: gap_count
         data_type: int64
-        description: Eligible patients who did not meet the measure.
+        description: Eligible members who did not meet the measure (denominator minus numerator).
       - name: performance_rate
         data_type: float64
-        description: Numerator divided by denominator, as a percentage rounded to two decimals.
+        description: Numerator divided by denominator, as a percentage rounded to two decimals. Null when the segment has no eligible members. Don't average across segments.
 
   - name: rpt_preventive_care_gaps
-    description: Dashboard-facing preventive care gap summary by gap, gender, and age band. Contract-enforced because it feeds quality reporting.
+    description: >
+      Open preventive care gaps summarized by gap type, gender, and age band, for dashboards and
+      outreach planning. Built from the member-level agg_patient_care_gaps. Contract-enforced so the
+      shape of this output can't change without a reviewed update.
     config:
       contract:
         enforced: true
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
     columns:
       - name: preventive_care_gaps_report_key
         data_type: string
-        description: Primary key for the care gap segment grain.
+        description: Primary key. Concatenation of care_gap_code, gender, and age_band, with 'unknown' for missing values.
         data_tests:
           - not_null
           - unique
       - name: care_gap_code
         data_type: string
+        description: Stable gap identifier, for example diabetes_monitoring.
       - name: care_gap_name
         data_type: string
+        description: Plain-language description of the gap, including the lookback window applied.
       - name: gender
         data_type: string
+        description: Member gender segment.
       - name: age_band
         data_type: string
+        description: Member age band segment.
       - name: care_gap_status
         data_type: string
+        description: Always 'open'. Closed gaps are tracked in snap_patient_care_gaps.
       - name: patient_count
         data_type: int64
-        description: Distinct patients with the open gap in this segment.
+        description: Distinct members with this open gap in the segment.
       - name: oldest_latest_relevant_event_date
         data_type: date
+        description: Among members in the segment, the oldest "last qualifying event" date. Shows how long the most overdue member has gone without the service. Null-only segments mean no member has ever had the service.
       - name: newest_latest_relevant_event_date
         data_type: date
+        description: Among members in the segment, the most recent "last qualifying event" date.
 
   - name: rpt_immunization_coverage
     description: Dashboard-facing immunization coverage by month, vaccine, gender, and age band.
@@ -139,26 +165,92 @@ models:
           - unique
 
   - name: rpt_high_risk_cohorts
-    description: Dashboard-facing patient-level high-risk cohort view using condition, medication, abnormal result, and care-gap signals.
+    description: >
+      Patient-level risk list for care management. One row per member, with a simple rule-based risk
+      tier built from clinical activity and open care gaps.
+
+
+      Tier rules, evaluated in order:
+
+      - **high**: any abnormal observation, 2 or more open care gaps, or 3 or more active conditions.
+
+      - **moderate**: any active condition, any active medication request, or exactly 1 open care gap.
+
+      - **low**: none of the above.
+
+
+      Activity counts are all-time totals, not limited to a lookback window. Open care gap counts come
+      from agg_patient_care_gaps, so they change automatically when a governed measure rule changes.
+      This is a heuristic tier for prioritization, not a validated clinical risk score.
+    config:
+      meta:
+        owner: Care Management
+        contains_phi: true
     columns:
       - name: high_risk_cohort_report_key
-        description: Primary key for the patient-level high-risk cohort report.
+        description: Primary key. Equal to patient_id; the report has one row per member.
         data_tests:
           - not_null
           - unique
       - name: patient_id
-        description: Foreign key to the patient dimension.
+        description: FHIR Patient id. Foreign key to dim_patient.
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_patient')
                 field: patient_id
+      - name: patient_name
+        description: Member display name from dim_patient. PHI.
+      - name: gender
+        description: Member gender as recorded on the FHIR Patient resource.
+      - name: age_years
+        description: Member age in whole years.
+      - name: age_band
+        description: Member age band.
+      - name: encounter_count
+        description: All-time count of distinct encounters for the member.
+      - name: active_condition_count
+        description: Count of distinct conditions currently flagged active.
+      - name: abnormal_observation_count
+        description: All-time count of observations with an interpretation code other than normal ('N'). Any value above 0 puts the member in the high tier.
+      - name: active_medication_request_count
+        description: Count of distinct medication requests currently flagged active.
+      - name: open_care_gap_count
+        description: Number of open care gaps for the member in agg_patient_care_gaps. 0 when the member has none.
+      - name: risk_tier
+        description: Rule-based tier, one of 'high', 'moderate', or 'low'. See the model description for the rules.
 
   - name: rpt_disparities
-    description: Dashboard-facing disparities view showing quality rate differences from the measure average by gender and age band.
+    description: >
+      Quality measure performance by gender and age band, compared with the overall average for each
+      measure, so teams can spot which member segments are falling behind. Built from
+      agg_quality_measure_summary; segments with no eligible members are excluded.
+    config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
     columns:
       - name: disparities_report_key
-        description: Primary key for the disparities reporting grain.
+        description: Primary key. Concatenation of measure_id, gender, and age_band, with 'unknown' for missing values.
         data_tests:
           - not_null
           - unique
+      - name: measure_id
+        description: Stable measure identifier.
+      - name: measure_name
+        description: Human-readable measure name, including the lookback window applied.
+      - name: gender
+        description: Member gender segment.
+      - name: age_band
+        description: Member age band segment.
+      - name: denominator_count
+        description: Eligible members in the segment. Always greater than 0 in this report.
+      - name: numerator_count
+        description: Eligible members in the segment who met the measure.
+      - name: performance_rate
+        description: Segment performance as a percentage (numerator / denominator).
+      - name: rate_difference_from_measure_average
+        description: >
+          Segment performance_rate minus the simple average of performance_rate across all segments for
+          the same measure, in percentage points. Negative means the segment is below average. Note this
+          is an unweighted average of segments, so small segments count as much as large ones.

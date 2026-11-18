@@ -3,10 +3,18 @@ version: 2
 seeds:
   - name: hedis_measure_definitions
     description: >
-      Single source of truth for HEDIS-style quality measure rules (lookback windows, eligible age
-      range, and observation name match pattern). Every care-gap and quality-rate model reads these
-      parameters, so a rule change is a one-line, reviewed, version-controlled edit to this file.
+      The governed rulebook for HEDIS-style quality measures. One row per measure, holding its
+      lookback window, eligible age range, and observation name match pattern.
+
+
+      Every care-gap and quality-rate model reads these values instead of hardcoding them, so changing
+      a rule is a one-line edit to this file. That edit goes through git and pull-request review, and
+      it changes the gap list, the quality rate, and every downstream report together. The git history
+      of this file is the audit trail of every rule change: who made it, when, and who approved it.
     config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
       column_types:
         measure_id: string
         measure_label: string
@@ -18,32 +26,47 @@ seeds:
         rule_last_reviewed_on: date
     columns:
       - name: measure_id
-        description: Stable measure identifier shared by care-gap and quality-rate models.
+        description: Stable measure identifier, for example diabetes_a1c_monitoring. Referenced by the value sets, the measure events model, and the care-gap and quality-rate models.
         data_tests:
           - not_null
           - unique
       - name: measure_label
-        description: Short human-readable label used to build care-gap and measure names.
+        description: Short label for what qualifies, for example "A1c observation". Used to generate care-gap and measure names, so labels in reports always match the rule.
       - name: lookback_months
-        description: Number of calendar months before the reporting as-of date in which a qualifying observation closes the gap.
+        description: >
+          How recent a qualifying observation must be, in calendar months before the reporting as-of
+          date. An observation exactly this many calendar months old still counts. For example, with 6,
+          an A1c 6 months old is compliant and one 7 months old opens a gap.
         data_tests:
           - not_null
       - name: min_age_years
-        description: Minimum eligible patient age in years. Blank means no lower bound.
+        description: Minimum eligible member age in years, inclusive. Blank means no lower bound.
       - name: max_age_years
-        description: Maximum eligible patient age in years. Blank means no upper bound.
+        description: Maximum eligible member age in years, inclusive. Blank means no upper bound.
       - name: observation_name_pattern
-        description: Case-insensitive LIKE pattern on observation name used alongside the coded value set. Blank disables name matching so only coded value sets count.
+        description: >
+          Case-insensitive SQL LIKE pattern on the observation name (for example %a1c%). An observation
+          qualifies if it matches this pattern or its code is in hedis_measure_value_sets. Blank turns
+          off name matching, so only coded value sets count.
       - name: rule_owner
-        description: Team accountable for the measure definition.
+        description: Team accountable for the measure definition and for approving changes to it.
       - name: rule_last_reviewed_on
-        description: Date the rule was last reviewed against the current measure specification.
+        description: Date the rule was last reviewed against the current measure specification. Update it with every rule change.
 
   - name: hedis_measure_value_sets
     description: >
-      Coded value sets (LOINC) whose observations satisfy each quality measure. Adding or retiring a
-      code here updates every downstream care-gap and quality-rate model at once.
+      The codes that count toward each quality measure. One row per measure per code. Adding or
+      retiring a code here updates every downstream care-gap and quality-rate model at once.
+
+
+      Known issue found during the dbt migration: the blood pressure codes 85354-9, 8480-6, and
+      8462-4, which were hardcoded in the original logic, match no observations in the source data.
+      Blood pressure currently qualifies through code 55284-4 and the name pattern. Keep the unused
+      codes until the source feed is confirmed, then retire them through a reviewed change.
     config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
       column_types:
         measure_id: string
         code_system: string
@@ -51,14 +74,18 @@ seeds:
         code_display: string
     columns:
       - name: measure_id
-        description: Measure the code qualifies for.
+        description: Measure the code qualifies for. Foreign key to hedis_measure_definitions.
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('hedis_measure_definitions')
                 field: measure_id
+      - name: code_system
+        description: Terminology the code belongs to. Currently LOINC for all rows.
       - name: code
-        description: Observation code in the stated code system.
+        description: Observation code in the stated code system. Matched exactly against observation_code on the observation fact.
         data_tests:
           - not_null
+      - name: code_display
+        description: Human-readable name of the code, for reviewers. Not used in matching.

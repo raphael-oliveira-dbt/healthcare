@@ -1,0 +1,22 @@
+version: 2
+
+analyses:
+  - name: audit_rule_change_impact
+    description: >
+      Audit query: how many care gaps opened or closed at each point in time, by gap type. Use it with
+      the git history of hedis_measure_definitions to show that a specific rule change closed (or
+      opened) a specific number of gaps, at a specific time. Open the file in Studio and click Preview.
+    config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: false
+
+  - name: audit_member_gap_history
+    description: >
+      Audit query: the full care-gap history for one member, showing every version of every gap,
+      when it was recorded, and when it was replaced or closed. Set member_patient_id at the top of
+      the file, then click Preview.
+    config:
+      meta:
+        owner: Quality Improvement
+        contains_phi: true
