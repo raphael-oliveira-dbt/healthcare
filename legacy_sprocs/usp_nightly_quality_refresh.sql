@@ -32,10 +32,10 @@ BEGIN
 
     /* 2. Patient-level aggregates */
     EXEC dbo.usp_build_patient_clinical_profile;      /* must run before usp_build_quality_measure_summary */
-    EXEC dbo.usp_build_patient_care_gaps;             /* bs/usp_build_patient_care_gaps.sql */
+    EXEC dbo.usp_build_patient_care_gaps;             /* legacy_sprocs/usp_build_patient_care_gaps.sql */
 
     /* 3. Quality reporting */
-    EXEC dbo.usp_build_quality_measure_summary;       /* bs/usp_build_quality_measure_summary.sql */
+    EXEC dbo.usp_build_quality_measure_summary;       /* legacy_sprocs/usp_build_quality_measure_summary.sql */
     EXEC dbo.usp_build_rpt_clinical_quality;
     EXEC dbo.usp_build_rpt_disparities;
     EXEC dbo.usp_build_rpt_preventive_care_gaps;
