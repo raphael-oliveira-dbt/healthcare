@@ -6,6 +6,15 @@ sources:
 
     database: sales-demo-project-314714
     schema: raw_fhir_roliveira
+    config:
+      loaded_at_field: _loaded_at
+      freshness:
+        warn_after:
+          count: 24
+          period: hour
+        error_after:
+          count: 48
+          period: hour
     tables:
       - name: raw_condition
         description: FHIR Condition resources. Captures problems, diagnoses, or other clinical conditions asserted for a patient, including codes, clinical status, verification status, onset timing, and links to encounter or recorder context when present.

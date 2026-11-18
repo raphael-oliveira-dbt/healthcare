@@ -1,0 +1,64 @@
+version: 2
+
+seeds:
+  - name: hedis_measure_definitions
+    description: >
+      Single source of truth for HEDIS-style quality measure rules (lookback windows, eligible age
+      range, and observation name match pattern). Every care-gap and quality-rate model reads these
+      parameters, so a rule change is a one-line, reviewed, version-controlled edit to this file.
+    config:
+      column_types:
+        measure_id: string
+        measure_label: string
+        lookback_months: int64
+        min_age_years: int64
+        max_age_years: int64
+        observation_name_pattern: string
+        rule_owner: string
+        rule_last_reviewed_on: date
+    columns:
+      - name: measure_id
+        description: Stable measure identifier shared by care-gap and quality-rate models.
+        data_tests:
+          - not_null
+          - unique
+      - name: measure_label
+        description: Short human-readable label used to build care-gap and measure names.
+      - name: lookback_months
+        description: Number of calendar months before the reporting as-of date in which a qualifying observation closes the gap.
+        data_tests:
+          - not_null
+      - name: min_age_years
+        description: Minimum eligible patient age in years. Blank means no lower bound.
+      - name: max_age_years
+        description: Maximum eligible patient age in years. Blank means no upper bound.
+      - name: observation_name_pattern
+        description: Case-insensitive LIKE pattern on observation name used alongside the coded value set. Blank disables name matching so only coded value sets count.
+      - name: rule_owner
+        description: Team accountable for the measure definition.
+      - name: rule_last_reviewed_on
+        description: Date the rule was last reviewed against the current measure specification.
+
+  - name: hedis_measure_value_sets
+    description: >
+      Coded value sets (LOINC) whose observations satisfy each quality measure. Adding or retiring a
+      code here updates every downstream care-gap and quality-rate model at once.
+    config:
+      column_types:
+        measure_id: string
+        code_system: string
+        code: string
+        code_display: string
+    columns:
+      - name: measure_id
+        description: Measure the code qualifies for.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('hedis_measure_definitions')
+                field: measure_id
+      - name: code
+        description: Observation code in the stated code system.
+        data_tests:
+          - not_null

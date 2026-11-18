@@ -1,0 +1,7 @@
+measure_id,code_system,code,code_display
+adult_blood_pressure,LOINC,55284-4,Blood pressure systolic and diastolic
+adult_blood_pressure,LOINC,85354-9,Blood pressure panel with all children optional
+adult_blood_pressure,LOINC,8480-6,Systolic blood pressure
+adult_blood_pressure,LOINC,8462-4,Diastolic blood pressure
+diabetes_a1c_monitoring,LOINC,4548-4,Hemoglobin A1c/Hemoglobin.total in Blood
+diabetes_a1c_monitoring,LOINC,17856-6,Hemoglobin A1c/Hemoglobin.total in Blood by HPLC

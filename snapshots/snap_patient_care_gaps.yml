@@ -1,0 +1,16 @@
+snapshots:
+  - name: snap_patient_care_gaps
+    relation: ref('agg_patient_care_gaps')
+    description: >
+      Audit history of every patient care gap. Each run records when a gap opened, when its definition
+      or latest relevant event changed, and when it closed (closed gaps are kept as dbt_is_deleted rows).
+      Answers "what did we know about this member's gaps on a given date?" without restoring backups.
+    config:
+      schema: snapshots
+      unique_key: care_gap_key
+      strategy: check
+      check_cols:
+        - care_gap_name
+        - latest_relevant_event_date
+        - care_gap_status
+      hard_deletes: new_record

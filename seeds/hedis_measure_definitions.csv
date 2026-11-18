@@ -1,0 +1,3 @@
+measure_id,measure_label,lookback_months,min_age_years,max_age_years,observation_name_pattern,rule_owner,rule_last_reviewed_on
+adult_blood_pressure,blood pressure observation,12,18,,%blood pressure%,Quality Improvement,2026-11-01
+diabetes_a1c_monitoring,A1c observation,6,,,%a1c%,Quality Improvement,2026-11-01

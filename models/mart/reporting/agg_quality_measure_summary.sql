@@ -18,6 +18,22 @@ with reporting_as_of as (
 
 ),
 
+measure_rules as (
+
+    -- Measure parameters are governed in seeds/hedis_measure_definitions.csv
+    select
+        max(case when measure_id = 'adult_blood_pressure' then measure_label end) as bp_measure_label,
+        max(case when measure_id = 'adult_blood_pressure' then lookback_months end) as bp_lookback_months,
+        max(case when measure_id = 'adult_blood_pressure' then min_age_years end) as bp_min_age_years,
+        max(case when measure_id = 'adult_blood_pressure' then max_age_years end) as bp_max_age_years,
+        max(case when measure_id = 'diabetes_a1c_monitoring' then measure_label end) as a1c_measure_label,
+        max(case when measure_id = 'diabetes_a1c_monitoring' then lookback_months end) as a1c_lookback_months,
+        max(case when measure_id = 'diabetes_a1c_monitoring' then min_age_years end) as a1c_min_age_years,
+        max(case when measure_id = 'diabetes_a1c_monitoring' then max_age_years end) as a1c_max_age_years
+    from {{ ref('hedis_measure_definitions') }}
+
+),
+
 patient_flags as (
 
     select
@@ -46,29 +62,25 @@ patient_flags as (
 observation_flags as (
 
     select
-        observation.patient_id,
+        measure_events.patient_id,
         max(case
-            when (
-                lower(observation.observation_name) like '%blood pressure%'
-                or observation.observation_code in ('85354-9', '8480-6', '8462-4')
-            )
-            and date_diff(reporting_as_of.reporting_as_of_date, observation.effective_date, month) <= 12
+            when measure_events.measure_id = 'adult_blood_pressure'
+                and date_diff(reporting_as_of.reporting_as_of_date, measure_events.latest_qualifying_event_date, month)
+                    <= measure_rules.bp_lookback_months
                 then 1
             else 0
         end) as has_recent_blood_pressure,
         max(case
-            when (
-                lower(observation.observation_name) like '%a1c%'
-                or lower(observation.observation_name) like '%hemoglobin a1c%'
-                or observation.observation_code in ('4548-4', '17856-6')
-            )
-            and date_diff(reporting_as_of.reporting_as_of_date, observation.effective_date, month) <= 6
+            when measure_events.measure_id = 'diabetes_a1c_monitoring'
+                and date_diff(reporting_as_of.reporting_as_of_date, measure_events.latest_qualifying_event_date, month)
+                    <= measure_rules.a1c_lookback_months
                 then 1
             else 0
         end) as has_recent_diabetes_monitoring
-    from {{ ref('fct_observation') }} as observation
+    from {{ ref('agg_patient_quality_measure_events') }} as measure_events
     cross join reporting_as_of
-    group by observation.patient_id
+    cross join measure_rules
+    group by measure_events.patient_id
 
 ),
 
@@ -83,8 +95,29 @@ measure_inputs as (
         patient_flags.has_recent_immunization,
         patient_flags.has_diabetes,
         coalesce(observation_flags.has_recent_blood_pressure, 0) as has_recent_blood_pressure,
-        coalesce(observation_flags.has_recent_diabetes_monitoring, 0) as has_recent_diabetes_monitoring
+        coalesce(observation_flags.has_recent_diabetes_monitoring, 0) as has_recent_diabetes_monitoring,
+        case
+            when (measure_rules.bp_min_age_years is null or patient_flags.age_years >= measure_rules.bp_min_age_years)
+                and (measure_rules.bp_max_age_years is null or patient_flags.age_years <= measure_rules.bp_max_age_years)
+                then 1
+            else 0
+        end as is_bp_age_eligible,
+        case
+            when (measure_rules.a1c_min_age_years is null or patient_flags.age_years >= measure_rules.a1c_min_age_years)
+                and (measure_rules.a1c_max_age_years is null or patient_flags.age_years <= measure_rules.a1c_max_age_years)
+                then 1
+            else 0
+        end as is_a1c_age_eligible,
+        concat(
+            'Adults with ', measure_rules.bp_measure_label,
+            ' in last ', cast(measure_rules.bp_lookback_months as string), ' months'
+        ) as bp_measure_name,
+        concat(
+            'Diabetes cohort with ', measure_rules.a1c_measure_label,
+            ' in last ', cast(measure_rules.a1c_lookback_months as string), ' months'
+        ) as a1c_measure_name
     from patient_flags
+    cross join measure_rules
     left join observation_flags
         on patient_flags.patient_id = observation_flags.patient_id
 
@@ -105,22 +138,25 @@ measure_rows as (
 
     select
         'adult_blood_pressure' as measure_id,
-        'Adults with blood pressure observation in last 12 months' as measure_name,
+        bp_measure_name as measure_name,
         gender,
         age_band,
-        case when age_years >= 18 then 1 else 0 end as denominator_flag,
-        case when age_years >= 18 then has_recent_blood_pressure else 0 end as numerator_flag
+        is_bp_age_eligible as denominator_flag,
+        case when is_bp_age_eligible = 1 then has_recent_blood_pressure else 0 end as numerator_flag
     from measure_inputs
 
     union all
 
     select
         'diabetes_a1c_monitoring' as measure_id,
-        'Diabetes cohort with A1c observation in last 6 months' as measure_name,
+        a1c_measure_name as measure_name,
         gender,
         age_band,
-        has_diabetes as denominator_flag,
-        case when has_diabetes = 1 then has_recent_diabetes_monitoring else 0 end as numerator_flag
+        case when has_diabetes = 1 and is_a1c_age_eligible = 1 then 1 else 0 end as denominator_flag,
+        case
+            when has_diabetes = 1 and is_a1c_age_eligible = 1 then has_recent_diabetes_monitoring
+            else 0
+        end as numerator_flag
     from measure_inputs
 
     union all
