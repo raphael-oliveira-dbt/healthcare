@@ -163,6 +163,7 @@ models:
       - name: patient_id
         description: FHIR Patient id of the member with the open gap. Foreign key to dim_patient.
         data_tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('dim_patient')
@@ -175,6 +176,16 @@ models:
         description: Member age band from dim_patient.
       - name: care_gap_code
         description: Stable gap identifier. One of annual_wellness_visit, blood_pressure_observation, diabetes_monitoring, immunization_review, or medication_follow_up.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - annual_wellness_visit
+                  - blood_pressure_observation
+                  - diabetes_monitoring
+                  - immunization_review
+                  - medication_follow_up
       - name: care_gap_name
         description: Plain-language description of the gap. For governed gaps, the lookback window in the text is generated from the seed, so the label always matches the rule applied.
       - name: latest_relevant_event_date
